@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tais Gestão</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--pink:#d88998;--pink2:#f8e7eb;--ink:#29272a;--muted:#777;--bg:#faf8f8;--card:#fff;--ok:#2f7d55;--warn:#b26a00;--bad:#a33;--line:#ece7e8}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--ink)}
+button,input,select,textarea{font:inherit}.hidden{display:none!important}
+header{height:70px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:8px 20px;position:sticky;top:0;z-index:3}
+header img{height:54px;width:54px;object-fit:contain}header b{font-size:20px;margin-left:10px}.headright{margin-left:auto;display:flex;gap:10px;align-items:center;color:#777;font-size:13px}
+.layout{display:grid;grid-template-columns:225px 1fr;min-height:calc(100vh - 70px)}nav{background:#fff;border-right:1px solid var(--line);padding:18px 10px}
+nav button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:12px;border-radius:9px;margin:3px 0;cursor:pointer;font-size:14px}
+nav button:hover,nav button.active{background:var(--pink2);color:#8c4050}
+main{padding:22px;max-width:1450px;width:100%}.page{display:none}.page.active{display:block}h1{font-size:25px;margin:0 0 18px}h3{margin-top:0}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(160px,1fr));gap:12px}.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:0 2px 10px #00000008}
+.kpi small{color:var(--muted)}.kpi strong{display:block;font-size:24px;margin-top:6px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.primary{background:var(--pink);color:#fff;border:0;border-radius:10px;padding:11px 17px;cursor:pointer}.secondary{background:#fff;border:1px solid #ddd;border-radius:10px;padding:10px 15px;cursor:pointer}.danger{color:var(--bad)}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden}th,td{padding:11px;border-bottom:1px solid #eee;text-align:left;font-size:14px}th{background:#f7f3f4}
+.bar{height:10px;background:#eee;border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;background:var(--pink)}.two{display:grid;grid-template-columns:1.2fr .8fr;gap:14px;margin-top:14px}
+.modal{display:none;position:fixed;inset:0;background:#0007;z-index:10;align-items:center;justify-content:center;padding:20px}.modal.show{display:flex}.modalbox{background:#fff;width:min(650px,100%);border-radius:16px;padding:20px;max-height:90vh;overflow:auto}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:10px}.form label{font-size:12px;color:#666}.form input,.form select,.form textarea{width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-top:4px}.full{grid-column:1/-1}.right{text-align:right}
+.pill{padding:4px 8px;border-radius:99px;background:var(--pink2);font-size:12px}.warn{color:var(--warn)}.ok{color:var(--ok)}
+.loginwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg,#fff,#f8e7eb)}
+.login{width:min(430px,100%);background:#fff;border:1px solid var(--line);border-radius:20px;padding:28px;box-shadow:0 18px 50px #00000012;text-align:center}.login img{width:95px;height:95px;object-fit:contain}.login input{width:100%;padding:12px;border:1px solid #ddd;border-radius:10px;margin:6px 0}.login button{width:100%;margin-top:8px}.msg{margin-top:12px;font-size:13px}.muted{color:var(--muted);font-size:13px}.empty{padding:25px;text-align:center;color:#777}.section-title{display:flex;align-items:center;justify-content:space-between;gap:10px}
+@media(max-width:850px){.layout{grid-template-columns:1fr}nav{display:flex;overflow:auto;border-right:0;border-bottom:1px solid #eee;padding:8px;position:sticky;top:70px;z-index:2}nav button{min-width:max-content}.grid{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}main{padding:14px}.form{grid-template-columns:1fr}.headright span{display:none}}
+</style>
+</head>
+<body>
+<div id="loginScreen" class="loginwrap">
+  <div class="login">
+    <img src="logo.webp" alt="Tais">
+    <h2>Tais Gestão</h2>
+    <p class="muted">Financeiro, rentabilidade e planejamento</p>
+    <form id="loginForm">
+      <input id="loginEmail" type="email" placeholder="E-mail" required>
+      <input id="loginPassword" type="password" placeholder="Senha" required>
+      <button class="primary" type="submit">Entrar</button>
+    </form>
+    <div id="loginMsg" class="msg"></div>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+<header>
+  <img src="logo.webp"><b>Tais Gestão</b>
+  <div class="headright"><span id="userEmail"></span><button class="secondary" onclick="logout()">Sair</button></div>
+</header>
+<div class="layout"><nav id="nav"></nav><main>
+<section id="dashboard" class="page active">
+  <h1>Visão geral</h1><div class="grid" id="kpis"></div>
+  <div class="actions"><button class="primary" onclick="openMovModal('entrada')">+ Recebi</button><button class="primary" onclick="openMovModal('saida')">− Paguei</button><button class="secondary" onclick="openMovModal('retirada')">⇄ Retirei</button></div>
+  <div class="two"><div class="card"><h3>Resumo do mês</h3><div id="resumo"></div></div><div class="card"><h3>Reserva de segurança</h3><strong id="reservaTxt"></strong><div class="bar" style="margin:12px 0"><i id="reservaBar"></i></div><small id="reservaMetaTxt"></small><div style="margin-top:12px"><button class="secondary" onclick="openReserveModal()">Atualizar reserva</button></div></div></div>
+</section>
+
+<section id="movimentacoes" class="page"><h1>Movimentações</h1><div class="actions"><button class="primary" onclick="openMovModal('entrada')">+ Recebi</button><button class="primary" onclick="openMovModal('saida')">− Paguei</button><button class="secondary" onclick="openMovModal('retirada')">⇄ Retirei</button></div><div style="overflow:auto"><table><thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th>Categoria/Serviço</th><th>Forma</th><th>Valor</th><th></th></tr></thead><tbody id="movBody"></tbody></table></div></section>
+
+<section id="servicos" class="page"><div class="section-title"><h1>Serviços e rentabilidade</h1><button class="primary" onclick="openServiceModal()">+ Serviço</button></div><div style="overflow:auto"><table><thead><tr><th>Serviço</th><th>Preço</th><th>Custo material</th><th>Duração</th><th>Margem</th><th>Margem/hora</th><th></th></tr></thead><tbody id="servBody"></tbody></table></div></section>
+
+<section id="abc" class="page"><h1>Curva ABC</h1><p class="muted">Classificação automática pelo faturamento do mês: A até 80% acumulado, B até 95%, C restante.</p><div style="overflow:auto"><table><thead><tr><th>Serviço</th><th>Atendimentos</th><th>Faturamento</th><th>%</th><th>Acumulado</th><th>Classe</th></tr></thead><tbody id="abcBody"></tbody></table></div></section>
+
+<section id="estoque" class="page"><div class="section-title"><h1>Estoque básico</h1><button class="primary" onclick="openProductModal()">+ Produto</button></div><div style="overflow:auto"><table><thead><tr><th>Produto</th><th>Qtd.</th><th>Mínimo</th><th>Custo médio</th><th>Valor estoque</th><th>Status</th><th></th></tr></thead><tbody id="stockBody"></tbody></table></div></section>
+
+<section id="financeiro" class="page"><h1>Financeiro</h1><div class="two"><div class="card"><h3>DRE gerencial — mês</h3><div id="dre"></div></div><div class="card"><h3>Fluxo de caixa — mês</h3><div id="fluxo"></div></div></div><div class="card" style="margin-top:14px"><h3>Contas a pagar</h3><div class="actions"><button class="primary" onclick="openPayableModal()">+ Conta</button></div><div style="overflow:auto"><table><thead><tr><th>Vencimento</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody id="payableBody"></tbody></table></div></div></section>
+
+<section id="planejamento" class="page"><h1>Planejamento</h1><div class="grid"><div class="card"><small>Meta de reserva</small><strong id="planReserve">R$ 30.000</strong></div><div class="card"><small>Retirada de referência</small><strong>R$ 4.500/mês</strong></div><div class="card"><small>Faturamento típico</small><strong>R$ 7–8 mil</strong></div><div class="card"><small>Objetivo</small><strong>Mais resultado/hora</strong></div></div><div class="card" style="margin-top:14px"><h3>Diretriz</h3><p>Saldo bancário não é dinheiro livre. A plataforma separa despesas empresariais, retiradas pessoais, resultado e reserva.</p></div></section>
+</main></div>
+</div>
+
+<div id="movModal" class="modal"><div class="modalbox"><h2 id="movTitle"></h2><form id="movForm" class="form">
+<input type="hidden" id="movTipo"><div><label>Data<input id="movData" type="date" required></label></div><div><label>Valor (R$)<input id="movValor" type="number" min="0" step="0.01" required></label></div>
+<div class="full"><label>Descrição / Cliente<input id="movDescricao" required></label></div>
+<div id="serviceWrap"><label>Serviço<select id="movService"></select></label></div><div id="categoryWrap"><label>Categoria<input id="movCategoria"></label></div>
+<div><label>Forma<select id="movForma"><option>Pix</option><option>Dinheiro</option><option>Cartão</option><option>Transferência</option><option>Outro</option></select></label></div>
+<div class="full"><label>Observação<textarea id="movObs" rows="2"></textarea></label></div>
+<div class="full right"><button type="button" class="secondary" onclick="closeModal('movModal')">Cancelar</button> <button class="primary">Salvar</button></div></form></div></div>
+
+<div id="serviceModal" class="modal"><div class="modalbox"><h2>Novo serviço</h2><form id="serviceForm" class="form">
+<div class="full"><label>Nome<input id="serviceNome" required></label></div><div><label>Preço (R$)<input id="servicePreco" type="number" min="0" step="0.01" required></label></div><div><label>Custo de material (R$)<input id="serviceCusto" type="number" min="0" step="0.01" required></label></div><div><label>Duração (min)<input id="serviceDuracao" type="number" min="1" required></label></div>
+<div class="full right"><button type="button" class="secondary" onclick="closeModal('serviceModal')">Cancelar</button> <button class="primary">Salvar</button></div></form></div></div>
+
+<div id="productModal" class="modal"><div class="modalbox"><h2>Novo produto</h2><form id="productForm" class="form">
+<div class="full"><label>Produto<input id="prodNome" required></label></div><div><label>Unidade<input id="prodUnidade" value="un"></label></div><div><label>Quantidade<input id="prodQtd" type="number" step="0.001" value="0"></label></div><div><label>Estoque mínimo<input id="prodMin" type="number" step="0.001" value="0"></label></div><div><label>Custo médio (R$)<input id="prodCusto" type="number" step="0.01" value="0"></label></div><div class="full"><label>Fornecedor<input id="prodFornecedor"></label></div>
+<div class="full right"><button type="button" class="secondary" onclick="closeModal('productModal')">Cancelar</button> <button class="primary">Salvar</button></div></form></div></div>
+
+<div id="payableModal" class="modal"><div class="modalbox"><h2>Nova conta a pagar</h2><form id="payableForm" class="form">
+<div class="full"><label>Descrição<input id="payDesc" required></label></div><div><label>Categoria<input id="payCat"></label></div><div><label>Valor (R$)<input id="payValor" type="number" step="0.01" required></label></div><div><label>Vencimento<input id="payVenc" type="date" required></label></div><div><label><input id="payRec" type="checkbox" style="width:auto"> Recorrente</label></div>
+<div class="full right"><button type="button" class="secondary" onclick="closeModal('payableModal')">Cancelar</button> <button class="primary">Salvar</button></div></form></div></div>
+
+<div id="reserveModal" class="modal"><div class="modalbox"><h2>Reserva de segurança</h2><form id="reserveForm" class="form">
+<div><label>Saldo atual (R$)<input id="resSaldo" type="number" step="0.01" required></label></div><div><label>Meta (R$)<input id="resMeta" type="number" step="0.01" required></label></div>
+<div class="full right"><button type="button" class="secondary" onclick="closeModal('reserveModal')">Cancelar</button> <button class="primary">Salvar</button></div></form></div></div>
+
+<script>
+const SUPABASE_URL='https://cwzskcuxqtzbuxkbpdfg.supabase.co';
+const SUPABASE_KEY='sb_publishable_hoOOf7qlLZMcAmCz3Y6trA_NPrSpsL2';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let user=null, state={transactions:[],services:[],products:[],payables:[],reserves:[]};
+const $=id=>document.getElementById(id);
+const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const today=()=>new Date().toISOString().slice(0,10);
+const menu=[['dashboard','Início'],['movimentacoes','Movimentações'],['servicos','Serviços'],['abc','Curva ABC'],['estoque','Estoque'],['financeiro','Financeiro'],['planejamento','Planejamento']];
+$('nav').innerHTML=menu.map((x,i)=>`<button class="${i?'':'active'}" onclick="go('${x[0]}',this)">${x[1]}</button>`).join('');
+
+function go(id,b){document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));$(id).classList.add('active');document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');render()}
+function closeModal(id){$(id).classList.remove('show')}
+function monthRows(rows,dateField='data'){const m=today().slice(0,7);return rows.filter(x=>(x[dateField]||'').slice(0,7)===m)}
+function calc(){const a=monthRows(state.transactions);const income=a.filter(x=>x.tipo==='entrada').reduce((s,x)=>s+Number(x.valor),0);const expense=a.filter(x=>x.tipo==='saida').reduce((s,x)=>s+Number(x.valor),0);const draw=a.filter(x=>x.tipo==='retirada').reduce((s,x)=>s+Number(x.valor),0);return {a,income,expense,draw,result:income-expense,cash:income-expense-draw}}
+async function loadAll(){
+ const [t,s,p,a,r]=await Promise.all([
+   sb.from('transactions').select('*,services(nome)').order('data',{ascending:false}),
+   sb.from('services').select('*').eq('ativo',true).order('nome'),
+   sb.from('products').select('*').eq('ativo',true).order('nome'),
+   sb.from('accounts_payable').select('*').order('vencimento'),
+   sb.from('reserves').select('*').order('created_at')
+ ]);
+ for(const x of [t,s,p,a,r]) if(x.error){alert('Erro ao carregar dados: '+x.error.message);return}
+ state.transactions=t.data||[];state.services=s.data||[];state.products=p.data||[];state.payables=a.data||[];state.reserves=r.data||[];
+ render();
+}
+function render(){
+ const c=calc();
+ $('kpis').innerHTML=[['Faturamento',c.income],['Despesas',c.expense],['Resultado',c.result],['Retiradas',c.draw]].map(x=>`<div class="card kpi"><small>${x[0]}</small><strong>${money(x[1])}</strong></div>`).join('');
+ $('resumo').innerHTML=`<p>Entradas: <b>${money(c.income)}</b></p><p>Saídas empresariais: <b>${money(c.expense)}</b></p><p>Retiradas pessoais: <b>${money(c.draw)}</b></p><p>Variação de caixa: <b>${money(c.cash)}</b></p>`;
+ const reserve=state.reserves[0]||{saldo:0,meta:30000};$('reservaTxt').textContent=`${money(reserve.saldo)} / ${money(reserve.meta)}`;$('reservaMetaTxt').textContent=`Meta: ${money(reserve.meta)}`;$('reservaBar').style.width=Math.min(100,Number(reserve.saldo||0)/Math.max(1,Number(reserve.meta||30000))*100)+'%';$('planReserve').textContent=money(reserve.meta||30000);
+ $('movBody').innerHTML=state.transactions.map(x=>`<tr><td>${fmtDate(x.data)}</td><td><span class="pill">${x.tipo}</span></td><td>${esc(x.descricao)}</td><td>${esc(x.services?.nome||x.categoria||'-')}</td><td>${esc(x.forma_pagamento||'-')}</td><td>${money(x.valor)}</td><td><button class="secondary danger" onclick="deleteRow('transactions',${x.id})">Excluir</button></td></tr>`).join('')||emptyRow(7,'Nenhuma movimentação.');
+ $('servBody').innerHTML=state.services.map(s=>{const margin=Number(s.preco)-Number(s.custo_material),ph=s.duracao_min?margin/(s.duracao_min/60):0;return `<tr><td>${esc(s.nome)}</td><td>${money(s.preco)}</td><td>${money(s.custo_material)}</td><td>${s.duracao_min} min</td><td>${money(margin)}</td><td>${money(ph)}</td><td><button class="secondary danger" onclick="deactivate('services',${s.id})">Inativar</button></td></tr>`}).join('')||emptyRow(7,'Cadastre os serviços da Tais.');
+ $('stockBody').innerHTML=state.products.map(p=>`<tr><td>${esc(p.nome)}</td><td>${Number(p.quantidade)} ${esc(p.unidade||'')}</td><td>${Number(p.estoque_minimo)}</td><td>${money(p.custo_medio)}</td><td>${money(Number(p.quantidade)*Number(p.custo_medio))}</td><td class="${Number(p.quantidade)<=Number(p.estoque_minimo)?'warn':'ok'}">${Number(p.quantidade)<=Number(p.estoque_minimo)?'Repor':'OK'}</td><td><button class="secondary" onclick="adjustStock(${p.id})">Ajustar</button></td></tr>`).join('')||emptyRow(7,'Nenhum produto cadastrado.');
+ $('dre').innerHTML=`<p>Receita bruta <b style="float:right">${money(c.income)}</b></p><p>(−) Despesas empresariais <b style="float:right">${money(c.expense)}</b></p><hr><p>Resultado gerencial <b style="float:right">${money(c.result)}</b></p><p class="muted">Retiradas da proprietária (fora da DRE) <b style="float:right">${money(c.draw)}</b></p>`;
+ $('fluxo').innerHTML=`<p>Entradas: <b>${money(c.income)}</b></p><p>Saídas: <b>${money(c.expense)}</b></p><p>Retiradas: <b>${money(c.draw)}</b></p><hr><p>Variação de caixa: <b>${money(c.cash)}</b></p>`;
+ $('payableBody').innerHTML=state.payables.map(x=>`<tr><td>${fmtDate(x.vencimento)}</td><td>${esc(x.descricao)}</td><td>${esc(x.categoria||'-')}</td><td>${money(x.valor)}</td><td class="${x.pago?'ok':(x.vencimento<today()?'warn':'')}">${x.pago?'Pago':(x.vencimento<today()?'Vencida':'Aberta')}</td><td>${x.pago?'':`<button class="secondary" onclick="payBill(${x.id})">Pagar</button>`}</td></tr>`).join('')||emptyRow(6,'Nenhuma conta a pagar.');
+ renderABC();populateServices();
+}
+function renderABC(){const ins=monthRows(state.transactions).filter(x=>x.tipo==='entrada'),map={};ins.forEach(x=>{const k=x.services?.nome||x.categoria||'Sem serviço';map[k]??={n:0,v:0};map[k].n++;map[k].v+=Number(x.valor)});const arr=Object.entries(map).map(([name,o])=>({name,...o})).sort((a,b)=>b.v-a.v),total=arr.reduce((s,x)=>s+x.v,0);let acc=0;$('abcBody').innerHTML=arr.map(x=>{const pct=total?x.v/total*100:0;const before=acc;acc+=pct;const cls=before<80?'A':before<95?'B':'C';return `<tr><td>${esc(x.name)}</td><td>${x.n}</td><td>${money(x.v)}</td><td>${pct.toFixed(1)}%</td><td>${acc.toFixed(1)}%</td><td><b>${cls}</b></td></tr>`}).join('')||emptyRow(6,'Registre recebimentos vinculados a serviços para gerar a Curva ABC.')}
+function populateServices(){$('movService').innerHTML='<option value="">Selecione...</option>'+state.services.map(s=>`<option value="${s.id}">${esc(s.nome)}</option>`).join('')}
+function openMovModal(t){$('movTipo').value=t;$('movTitle').textContent=t==='entrada'?'Registrar recebimento':t==='saida'?'Registrar pagamento':'Registrar retirada pessoal';$('movData').value=today();$('movValor').value='';$('movDescricao').value='';$('movCategoria').value='';$('movObs').value='';$('serviceWrap').style.display=t==='entrada'?'block':'none';$('categoryWrap').style.display=t==='entrada'?'none':'block';$('movModal').classList.add('show')}
+function openServiceModal(){$('serviceForm').reset();$('serviceModal').classList.add('show')}
+function openProductModal(){$('productForm').reset();$('prodUnidade').value='un';$('prodQtd').value=0;$('prodMin').value=0;$('prodCusto').value=0;$('productModal').classList.add('show')}
+function openPayableModal(){$('payableForm').reset();$('payVenc').value=today();$('payableModal').classList.add('show')}
+function openReserveModal(){const r=state.reserves[0]||{saldo:0,meta:30000};$('resSaldo').value=r.saldo||0;$('resMeta').value=r.meta||30000;$('reserveModal').classList.add('show')}
+$('movForm').onsubmit=async e=>{e.preventDefault();const t=$('movTipo').value;const payload={user_id:user.id,data:$('movData').value,tipo:t,descricao:$('movDescricao').value,valor:+$('movValor').value,categoria:t==='entrada'?null:$('movCategoria').value,forma_pagamento:$('movForma').value,cliente:t==='entrada'?$('movDescricao').value:null,service_id:t==='entrada'&&$('movService').value?+$('movService').value:null,observacao:$('movObs').value};const {error}=await sb.from('transactions').insert(payload);if(error)return alert(error.message);closeModal('movModal');await loadAll()}
+$('serviceForm').onsubmit=async e=>{e.preventDefault();const {error}=await sb.from('services').insert({user_id:user.id,nome:$('serviceNome').value,preco:+$('servicePreco').value,custo_material:+$('serviceCusto').value,duracao_min:+$('serviceDuracao').value});if(error)return alert(error.message);closeModal('serviceModal');await loadAll()}
+$('productForm').onsubmit=async e=>{e.preventDefault();const {error}=await sb.from('products').insert({user_id:user.id,nome:$('prodNome').value,unidade:$('prodUnidade').value,quantidade:+$('prodQtd').value,estoque_minimo:+$('prodMin').value,custo_medio:+$('prodCusto').value,fornecedor:$('prodFornecedor').value});if(error)return alert(error.message);closeModal('productModal');await loadAll()}
+$('payableForm').onsubmit=async e=>{e.preventDefault();const {error}=await sb.from('accounts_payable').insert({user_id:user.id,descricao:$('payDesc').value,categoria:$('payCat').value,valor:+$('payValor').value,vencimento:$('payVenc').value,recorrente:$('payRec').checked});if(error)return alert(error.message);closeModal('payableModal');await loadAll()}
+$('reserveForm').onsubmit=async e=>{e.preventDefault();const payload={user_id:user.id,nome:'Reserva de segurança',saldo:+$('resSaldo').value,meta:+$('resMeta').value};let q=state.reserves[0]?sb.from('reserves').update(payload).eq('id',state.reserves[0].id):sb.from('reserves').insert(payload);const {error}=await q;if(error)return alert(error.message);closeModal('reserveModal');await loadAll()}
+async function deleteRow(table,id){if(!confirm('Excluir este registro?'))return;const {error}=await sb.from(table).delete().eq('id',id);if(error)return alert(error.message);await loadAll()}
+async function deactivate(table,id){if(!confirm('Inativar este cadastro?'))return;const {error}=await sb.from(table).update({ativo:false}).eq('id',id);if(error)return alert(error.message);await loadAll()}
+async function adjustStock(id){const p=state.products.find(x=>x.id===id);const val=prompt(`Nova quantidade de ${p.nome}:`,p.quantidade);if(val===null)return;const n=Number(val);if(Number.isNaN(n))return alert('Quantidade inválida');const diff=n-Number(p.quantidade);const {error:e1}=await sb.from('products').update({quantidade:n}).eq('id',id);if(e1)return alert(e1.message);await sb.from('stock_movements').insert({user_id:user.id,product_id:id,tipo:'ajuste',quantidade:diff,observacao:'Ajuste manual'});await loadAll()}
+async function payBill(id){const b=state.payables.find(x=>x.id===id);if(!confirm(`Registrar pagamento de ${money(b.valor)}?`))return;const date=today();const {error:e1}=await sb.from('accounts_payable').update({pago:true,data_pagamento:date}).eq('id',id);if(e1)return alert(e1.message);const {error:e2}=await sb.from('transactions').insert({user_id:user.id,data:date,tipo:'saida',descricao:b.descricao,valor:b.valor,categoria:b.categoria||'Conta a pagar',forma_pagamento:'Outro',observacao:'Gerado por contas a pagar'});if(e2)return alert(e2.message);await loadAll()}
+async function logout(){await sb.auth.signOut()}
+$('loginForm').onsubmit=async e=>{e.preventDefault();$('loginMsg').textContent='Entrando...';const {error}=await sb.auth.signInWithPassword({email:$('loginEmail').value,password:$('loginPassword').value});if(error){$('loginMsg').textContent=error.message;$('loginMsg').className='msg danger'}};
+sb.auth.onAuthStateChange(async(_event,session)=>{if(session?.user){user=session.user;$('userEmail').textContent=user.email;$('loginScreen').classList.add('hidden');$('app').classList.remove('hidden');await loadAll()}else{user=null;$('app').classList.add('hidden');$('loginScreen').classList.remove('hidden');$('loginMsg').textContent=''}});
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function fmtDate(d){return d?d.split('-').reverse().join('/'):'-'}function emptyRow(n,msg){return `<tr><td colspan="${n}" class="empty">${msg}</td></tr>`}
+(async()=>{const {data:{session}}=await sb.auth.getSession();if(session?.user){user=session.user;$('userEmail').textContent=user.email;$('loginScreen').classList.add('hidden');$('app').classList.remove('hidden');await loadAll()}})();
+</script>
+</body></html>
