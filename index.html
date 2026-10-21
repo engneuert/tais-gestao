@@ -40,8 +40,12 @@ async function loadAll(){
     S.transactions=[];S.services=qs[0].data||[];S.products=[];S.payables=[];S.reserves=[];S.clients=qs[1].data||[];S.appointments=qs[2].data||[];S.appointmentItems=qs[3].data||[];S.serviceProducts=[];S.settings={...(qs[4].data||{}),retirada_meta:0,reserva_meta:0,investimento_meta:0};renderAppointments();renderClients();fillSelects();return
   }
   const qs=await Promise.all([sb.from('transactions').select('*').order('data',{ascending:false}),sb.from('services').select('*').eq('ativo',true).order('categoria').order('nome'),sb.from('products').select('*').eq('ativo',true).order('nome'),sb.from('accounts_payable').select('*').order('vencimento'),sb.from('reserves').select('*'),sb.from('clients').select('*').eq('ativo',true).order('nome'),sb.from('appointments').select('*').order('data',{ascending:false}),sb.from('appointment_items').select('*'),sb.from('service_products').select('*'),sb.from('business_settings').select('*').maybeSingle(),sb.from('app_users').select('user_id,owner_user_id,nome,perfil,ativo,created_at').order('created_at')]);
-  const err=qs.find(x=>x.error)?.error;if(err){console.error(err);alert('Erro ao carregar dados: '+err.message);return}
-  [S.transactions,S.services,S.products,S.payables,S.reserves,S.clients,S.appointments,S.appointmentItems,S.serviceProducts]=qs.slice(0,9).map(x=>x.data||[]);S.settings=qs[9].data||{desconto_dinheiro_pct:0,taxa_debito_pct:0,taxa_credito_pct:0,retirada_meta:4500,reserva_meta:30000,investimento_meta:0,bloquear_estoque_negativo:false};teamUsers=qs[10].data||[];if(accessProfile&&!teamUsers.some(u=>u.user_id===accessProfile.user_id)){teamUsers.unshift({...accessProfile,created_at:''})}renderAll();renderUsers()
+  const coreErr=qs.slice(0,10).find(x=>x.error)?.error;if(coreErr){console.error(coreErr);alert('Erro ao carregar dados: '+coreErr.message);return}
+  [S.transactions,S.services,S.products,S.payables,S.reserves,S.clients,S.appointments,S.appointmentItems,S.serviceProducts]=qs.slice(0,9).map(x=>x.data||[]);S.settings=qs[9].data||{desconto_dinheiro_pct:0,taxa_debito_pct:0,taxa_credito_pct:0,retirada_meta:4500,reserva_meta:30000,investimento_meta:0,bloquear_estoque_negativo:false};
+  // A lista de usuários é administrativa e nunca deve impedir o carregamento do restante da plataforma.
+  if(qs[10].error){console.error('Erro ao carregar equipe:',qs[10].error);teamUsers=[]}else{teamUsers=qs[10].data||[]}
+  if(accessProfile&&!teamUsers.some(u=>u.user_id===accessProfile.user_id)){teamUsers.unshift({...accessProfile,created_at:''})}
+  renderAll();renderUsers()
 }
 function periodRows(rows,start,end,key='data'){return rows.filter(x=>String(x[key]||'')>=start&&String(x[key]||'')<=end)}
 function calc(){
